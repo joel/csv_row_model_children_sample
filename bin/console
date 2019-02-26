@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require "csv_row_model_sample"
+
+# You can add fixtures and/or initialization code here to make experimenting
+# with your gem easier. You can also use a different console, if you like.
+
+# (If you use this, don't forget to add pry to your Gemfile!)
+require "pry"
+# Pry.start
+
+require 'active_record'
+
+ActiveRecord::Base.establish_connection(adapter: 'sqlite3', database: ':memory:')
+
+load File.dirname(__FILE__) + '/../spec/support/schema.rb'
+
+require "irb"
+IRB.start(__FILE__)
