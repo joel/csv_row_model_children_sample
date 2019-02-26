@@ -22,7 +22,92 @@ Or install it yourself as:
 
 ## Usage
 
-Write usage instructions here
+Importing followinng CSV 
+
+```
+[
+  [ 'Book Name' , 'Email'                          , 'First Name', 'Last Name' ],
+  [ 'Perso'     , ''                               , ''          , ''          ],
+  [ ''          , 'cherry.howe@lesch.com'          , 'Cherry'    , 'Howe'      ],
+  [ ''          , ''                               , 'Joel'      , 'AZEMAR'    ], # Invalid record will be ignored 
+  [ ''          , 'palmer.kiehn@fay.ca'            , 'Palmer'    , 'Kiehn'     ],
+  [ ''          , 'laree.crist@reynolds.com'       , 'Laree'     , 'Crist'     ],
+  [ 'Pro'       , ''                               , ''          , ''          ],
+  [ ''          , 'judith.gibson@hoeger.co.uk'     , 'Judith'    , 'Gibson'    ],
+  [ ''          , 'krishna.keebler@wuckerthoppe.us', 'Krishna'   , 'Keebler'   ],
+]
+```
+
+Models 
+
+```
+class ContactBook < ApplicationRecord
+  validates :name, presence: true
+  has_many :users
+end 
+```
+
+```
+class User < ApplicationRecord
+  validates :email, presence: true
+  belongs_to :contact_book
+end 
+```
+
+Importers
+
+```
+class ContactBookImportRow
+  include CsvRowModel::Model
+
+  column :book_name
+  
+  include CsvRowModel::Import
+
+  validates :book_name, presence: true
+
+  represents_one :contact_book, dependencies: %i(book_name) do
+    ::ContactBook.where(name: book_name).first_or_create
+  end
+
+  has_many :users, UserImportRow
+end 
+```
+
+```
+class UserImportRow
+  include CsvRowModel::Model
+
+  column :email, parse: ->(email) { email.downcase }
+  column :first_name
+  column :last_name
+
+  include CsvRowModel::Import
+
+  validates :email, presence: true
+
+  represents_one :user, dependencies: %i(email) do
+    user = ::User.where(email: email).first_or_create
+    user.update(name: "#{attributes[:first_name]} #{attributes[:last_name]}")
+    user
+  end
+end 
+```
+
+We get 
+
+```
+expect(rows[0].contact_book.name).to eql('Perso')
+expect(
+  rows[0].users.map { |user_import_row| user_import_row.user.name }.sort
+).to eql(["Cherry Howe", "Laree Crist", "Palmer Kiehn"])
+
+expect(rows[1].contact_book.name).to eql('Pro')
+expect(
+  rows[1].users.map { |user_import_row| user_import_row.user.name }.sort
+).to eql(["Judith Gibson", "Krishna Keebler"])
+```
+
 
 ## Development
 
